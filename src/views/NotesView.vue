@@ -72,8 +72,11 @@ import NoteList from "../components/NoteList.vue";
 import NoteEditor from "../components/NoteEditor.vue";
 import useAuth from "../composables/useAuth";
 import useNotes from "../composables/useNotes";
+import { useRouter } from "vue-router";
 
 const { logout } = useAuth();
+const router = useRouter();
+
 const {
   notes,
   loadingNotes,
@@ -130,5 +133,7 @@ const handleDeleteNote = async (id) => {
 
 const handleLogout = async () => {
   await logout();
+  selectedId.value = null;
+  router.push({ name: "login" });
 };
 </script>

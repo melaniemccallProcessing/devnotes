@@ -3,7 +3,7 @@
     <div class="hero-body">
       <div class="container">
         <div class="columns is-centered">
-          <div class="column is-12-desktop is-12-tablet">
+          <div class="column ">
             <h1 class="title has-text-centered">DevNotes Cloud</h1>
 
             <div class="box">
