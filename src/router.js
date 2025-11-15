@@ -27,13 +27,26 @@ const router = createRouter({
 router.beforeEach((to, from, next) => {
   const currentUser = auth.currentUser;
 
+  // --- AUTH GUARD ---
   if (to.meta.requiresAuth && !currentUser) {
-    next({ name: "login" });
-  } else if (to.name === "login" && currentUser) {
-    next({ name: "notes" });
-  } else {
-    next();
+    window.dispatchEvent(new Event("banner-hide"));
+    return next({ name: "login" });
   }
+
+  if (to.name === "login" && currentUser) {
+    window.dispatchEvent(new Event("banner-hide"));
+    return next({ name: "notes" });
+  }
+
+  // --- BANNER VISIBILITY ---
+  // Only show on NotesView (make sure your route is actually named "notes")
+  if (to.name === "notes") {
+    window.dispatchEvent(new Event("banner-show"));
+  } else {
+    window.dispatchEvent(new Event("banner-hide"));
+  }
+
+  next();
 });
 
 export default router;

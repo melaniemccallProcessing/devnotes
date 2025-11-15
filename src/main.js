@@ -1,3 +1,8 @@
+//Alpine stuff
+import Alpine from "alpinejs";
+window.Alpine = Alpine;
+Alpine.start();
+
 import { createApp } from 'vue';
 import './style.css';
 import App from './App.vue';
