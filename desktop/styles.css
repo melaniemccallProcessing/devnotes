@@ -46,6 +46,7 @@ body {
   padding: 0.4rem 0.6rem;
   border-radius: 4px;
   border: 1px solid #ccc;
+  max-width: 240px;
 }
 
 .sidebar-list {

@@ -5,7 +5,18 @@ import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
-  signOut
+  signOut,
+  db,
+  collection,
+  getDocs,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  doc,
+  query,
+  where,
+  orderBy,
+  serverTimestamp
 } from "./firebase";
 
 // --- Auth state ---
@@ -16,23 +27,25 @@ let authError = null;
 let authLoading = false;
 
 // --- Dummy data for now (will be replaced with Firestore later) ---
-const initialDummyNotes = [
-  {
-    id: "1",
-    title: "Welcome to DevNotes Desktop",
-    body: "This is a dummy note. Later, this will sync with Firebase.",
-    tags: ["demo", "desktop"]
-  },
-  {
-    id: "2",
-    title: "Second note",
-    body: "You can edit this text, switch between notes, and add new ones.",
-    tags: ["idea"]
-  }
-];
+// const initialDummyNotes = [
+//   {
+//     id: "1",
+//     title: "Welcome to DevNotes Desktop",
+//     body: "This is a dummy note. Later, this will sync with Firebase.",
+//     tags: ["demo", "desktop"]
+//   },
+//   {
+//     id: "2",
+//     title: "Second note",
+//     body: "You can edit this text, switch between notes, and add new ones.",
+//     tags: ["idea"]
+//   }
+// ];
 
-let notes = [...initialDummyNotes];
-let selectedId = notes[0]?.id ?? null;
+let notes = [];
+let selectedId = null;
+let notesLoading = false;
+let notesError = null;
 
 // --- Utility to escape HTML ---
 function escapeHtml(str) {
@@ -49,18 +62,23 @@ function escapeHtml(str) {
 }
 
 // --- Auth state listener ---
-onAuthStateChanged(auth, (user) => {
+onAuthStateChanged(auth, async (user) => {
   currentUser = user;
   authReady = true;
   authError = null;
   authLoading = false;
 
-  // Later: fetch notes from Firestore when user logs in
-  // For now, just reset dummy notes
-  notes = [...initialDummyNotes];
-  selectedId = notes[0]?.id ?? null;
-
-  render();
+  if (currentUser) {
+    // Load this user's notes from Firestore
+    await loadNotesForUser(currentUser.uid);
+  } else {
+    // Logged out: clear notes state
+    notes = [];
+    selectedId = null;
+    notesError = null;
+    notesLoading = false;
+    render();
+  }
 });
 
 // --- Rendering ---
@@ -124,24 +142,22 @@ function render() {
               />
             </label>
 
-            ${
-              authError
-                ? `<p class="auth-error">${escapeHtml(authError)}</p>`
-                : ""
-            }
+            ${authError
+        ? `<p class="auth-error">${escapeHtml(authError)}</p>`
+        : ""
+      }
 
             <button
               class="btn btn-primary btn-full"
               type="submit"
               ${authLoading ? "disabled" : ""}
             >
-              ${
-                authLoading
-                  ? "Please wait..."
-                  : authMode === "login"
-                  ? "Login"
-                  : "Create account"
-              }
+              ${authLoading
+        ? "Please wait..."
+        : authMode === "login"
+          ? "Login"
+          : "Create account"
+      }
             </button>
           </form>
         </div>
@@ -160,8 +176,8 @@ function render() {
         <div class="app-title">DevNotes Desktop</div>
         <div class="app-header-right">
           <span class="app-user-email">${escapeHtml(
-            currentUser.email || ""
-          )}</span>
+    currentUser.email || ""
+  )}</span>
           <button class="btn btn-ghost" id="logoutBtn">Logout</button>
         </div>
       </header>
@@ -182,12 +198,11 @@ function render() {
 
           <div class="sidebar-list" id="notesList">
             ${notes
-              .map(
-                (note) => `
+      .map(
+        (note) => `
               <div
-                class="note-list-item ${
-                  note.id === selectedId ? "is-selected" : ""
-                }"
+                class="note-list-item ${note.id === selectedId ? "is-selected" : ""
+          }"
                 data-id="${note.id}"
               >
                 <div class="note-title">
@@ -195,20 +210,19 @@ function render() {
                 </div>
                 <div class="note-tags">
                   ${(note.tags || [])
-                    .map((tag) => `<span class="tag">${escapeHtml(tag)}</span>`)
-                    .join("")}
+            .map((tag) => `<span class="tag">${escapeHtml(tag)}</span>`)
+            .join("")}
                 </div>
               </div>
             `
-              )
-              .join("")}
+      )
+      .join("")}
           </div>
         </aside>
 
         <main class="editor">
-          ${
-            selectedNote
-              ? `
+          ${selectedNote
+      ? `
             <div class="editor-header">
               <input
                 id="titleInput"
@@ -239,12 +253,12 @@ function render() {
               <button class="btn btn-danger" id="deleteNoteBtn">Delete</button>
             </div>
           `
-              : `
+      : `
             <div class="editor-empty">
               <p>Select a note from the left or create a new one.</p>
             </div>
           `
-          }
+    }
         </main>
       </div>
     </div>
@@ -298,17 +312,15 @@ function wireNotesEvents() {
   // New note
   const newNoteBtn = document.getElementById("newNoteBtn");
   if (newNoteBtn) {
-    newNoteBtn.addEventListener("click", () => {
-      const id = String(Date.now());
-      const newNote = {
-        id,
-        title: "Untitled note",
-        body: "",
-        tags: []
-      };
-      notes = [newNote, ...notes];
-      selectedId = id;
-      render();
+    newNoteBtn.addEventListener("click", async () => {
+      if (!currentUser) return;
+      try {
+        await createNoteForUser(currentUser.uid);
+      } catch (err) {
+        console.error("Error creating note:", err);
+        notesError = err.message || "Failed to create note.";
+        render();
+      }
     });
   }
 
@@ -327,15 +339,21 @@ function wireNotesEvents() {
   // Delete note
   const deleteNoteBtn = document.getElementById("deleteNoteBtn");
   if (deleteNoteBtn) {
-    deleteNoteBtn.addEventListener("click", () => {
+    deleteNoteBtn.addEventListener("click", async () => {
       if (!selectedId) return;
       const confirmDelete = confirm("Delete this note?");
       if (!confirmDelete) return;
-      notes = notes.filter((n) => n.id !== selectedId);
-      selectedId = notes[0]?.id ?? null;
-      render();
+      try {
+        await deleteNoteFromFirestore(selectedId);
+      } catch (err) {
+        console.error("Error deleting note:", err);
+        notesError = err.message || "Failed to delete note.";
+        render();
+      }
     });
   }
+
+
 
   // Edit title/body/tags (on blur)
   const titleInput = document.getElementById("titleInput");
@@ -343,36 +361,57 @@ function wireNotesEvents() {
   const tagsInput = document.getElementById("tagsInput");
 
   if (titleInput) {
-    titleInput.addEventListener("blur", () => {
+    titleInput.addEventListener("blur", async () => {
       const note = notes.find((n) => n.id === selectedId);
       if (!note) return;
-      note.title = titleInput.value;
-      render();
+      const newTitle = titleInput.value;
+      try {
+        await updateNoteInFirestore(note.id, { title: newTitle });
+      } catch (err) {
+        console.error("Error updating title:", err);
+        notesError = err.message || "Failed to update note.";
+        render();
+      }
     });
   }
 
   if (bodyInput) {
-    bodyInput.addEventListener("blur", () => {
+    bodyInput.addEventListener("blur", async () => {
       const note = notes.find((n) => n.id === selectedId);
       if (!note) return;
-      note.body = bodyInput.value;
-      // Not re-rendering immediately to avoid cursor jump
+      const newBody = bodyInput.value;
+      try {
+        await updateNoteInFirestore(note.id, { body: newBody });
+      } catch (err) {
+        console.error("Error updating body:", err);
+        notesError = err.message || "Failed to update note.";
+        render();
+      }
     });
   }
 
+
   if (tagsInput) {
-    tagsInput.addEventListener("blur", () => {
+    tagsInput.addEventListener("blur", async () => {
       const note = notes.find((n) => n.id === selectedId);
       if (!note) return;
-      note.tags = tagsInput.value
+      const tags = tagsInput.value
         .split(",")
         .map((t) => t.trim())
         .filter(Boolean);
-      render();
+
+      try {
+        await updateNoteInFirestore(note.id, { tags });
+      } catch (err) {
+        console.error("Error updating tags:", err);
+        notesError = err.message || "Failed to update note.";
+        render();
+      }
     });
   }
 
-  // Search (still operates on dummy data for now)
+
+  // Search (keeping it local for now)
   const searchInput = document.getElementById("searchInput");
   if (searchInput) {
     searchInput.addEventListener("input", () => {
@@ -399,6 +438,103 @@ function wireNotesEvents() {
       await signOut(auth);
     });
   }
+}
+
+//Notes helper functions
+async function loadNotesForUser(uid) {
+  if (!uid) return;
+  notesLoading = true;
+  notesError = null;
+
+  try {
+    const notesRef = collection(db, "notes");
+    const q = query(
+      notesRef,
+      where("userId", "==", uid),
+      orderBy("updatedAt", "desc")
+    );
+
+    const snapshot = await getDocs(q);
+    notes = snapshot.docs.map((d) => {
+      const data = d.data();
+      return {
+        id: d.id,
+        title: data.title || "",
+        body: data.body || "",
+        tags: data.tags || [],
+        pinned: data.pinned || false,
+        createdAt: data.createdAt,
+        updatedAt: data.updatedAt
+      };
+    });
+
+    selectedId = notes[0]?.id ?? null;
+  } catch (err) {
+    console.error("Error loading notes:", err);
+    notesError = err.message || "Failed to load notes.";
+  } finally {
+    notesLoading = false;
+    render();
+  }
+}
+
+async function createNoteForUser(uid) {
+  if (!uid) return null;
+  const now = serverTimestamp();
+
+  const docRef = await addDoc(collection(db, "notes"), {
+    userId: uid,
+    title: "Untitled note",
+    body: "",
+    tags: [],
+    pinned: false,
+    createdAt: now,
+    updatedAt: now
+  });
+
+  // Optimistically add to local list
+  notes = [
+    {
+      id: docRef.id,
+      title: "Untitled note",
+      body: "",
+      tags: [],
+      pinned: false,
+      createdAt: now,
+      updatedAt: now
+    },
+    ...notes
+  ];
+  selectedId = docRef.id;
+  render();
+  return docRef.id;
+}
+
+async function updateNoteInFirestore(id, payload) {
+  if (!id) return;
+  const noteRef = doc(db, "notes", id);
+
+  await updateDoc(noteRef, {
+    ...payload,
+    updatedAt: serverTimestamp()
+  });
+
+  // Update local copy
+  notes = notes.map((n) =>
+    n.id === id ? { ...n, ...payload } : n
+  );
+  render();
+}
+
+async function deleteNoteFromFirestore(id) {
+  if (!id) return;
+  await deleteDoc(doc(db, "notes", id));
+
+  notes = notes.filter((n) => n.id !== id);
+  if (selectedId === id) {
+    selectedId = notes[0]?.id ?? null;
+  }
+  render();
 }
 
 // Initial render (in case authReady becomes true asynchronously)
