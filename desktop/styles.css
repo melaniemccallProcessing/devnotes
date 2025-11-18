@@ -1,0 +1,292 @@
+/* desktop/src/style.css */
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #ddd;
+  background: #f7f7f7;
+}
+
+.app-title {
+  font-weight: 600;
+}
+
+.app-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+/* Sidebar */
+
+.sidebar {
+  width: 260px;
+  border-right: 1px solid #ddd;
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.sidebar-search input {
+  width: 100%;
+  padding: 0.4rem 0.6rem;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+}
+
+.sidebar-list {
+  flex: 1;
+  overflow-y: auto;
+  margin-top: 0.5rem;
+}
+
+.note-list-item {
+  padding: 0.4rem 0.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-bottom: 0.3rem;
+}
+
+.note-list-item:hover {
+  background: #f2f2f2;
+}
+
+.note-list-item.is-selected {
+  background: #e4efff;
+}
+
+.note-title {
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.note-tags {
+  margin-top: 0.2rem;
+}
+
+.tag {
+  display: inline-block;
+  font-size: 0.7rem;
+  background: #eef;
+  color: #335;
+  padding: 0.1rem 0.35rem;
+  border-radius: 999px;
+  margin-right: 0.25rem;
+}
+
+/* Editor */
+
+.editor {
+  flex: 1;
+  padding: 0.75rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.editor-header {
+  margin-bottom: 0.25rem;
+}
+
+.editor-title {
+  width: 100%;
+  font-size: 1.1rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  font-weight: 500;
+}
+
+.editor-body {
+  flex: 1;
+}
+
+.editor-textarea {
+  width: 100%;
+  height: 100%;
+  resize: vertical;
+  padding: 0.5rem 0.6rem;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  font-family: "SF Mono", Menlo, Monaco, Consolas, monospace;
+  font-size: 0.9rem;
+}
+
+.editor-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.editor-tags-input {
+  flex: 1;
+  padding: 0.4rem 0.6rem;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+}
+
+.editor-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #888;
+}
+
+/* Buttons */
+
+.btn {
+  font-size: 0.85rem;
+  border-radius: 4px;
+  border: none;
+  padding: 0.4rem 0.75rem;
+  cursor: pointer;
+}
+
+.btn-full {
+  width: 100%;
+}
+
+.btn-primary {
+  background: #3273dc;
+  color: white;
+}
+
+.btn-primary:hover {
+  background: #2759aa;
+}
+
+.btn-danger {
+  background: #f14668;
+  color: white;
+}
+
+.btn-danger:hover {
+  background: #d83352;
+}
+
+.btn-ghost {
+  background: transparent;
+  border: 1px solid #ccc;
+}
+
+.btn-ghost:hover {
+  background: #f0f0f0;
+}
+
+/* Centered auth layout */
+.auth-shell {
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f4f4f4;
+}
+
+.auth-card {
+  background: white;
+  padding: 1.5rem 2rem;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  width: 320px;
+  max-width: 90vw;
+}
+
+.auth-title {
+  font-size: 1.3rem;
+  margin-bottom: 0.25rem;
+}
+
+.auth-subtitle {
+  font-size: 0.85rem;
+  color: #666;
+  margin-bottom: 1rem;
+}
+
+.auth-tabs {
+  display: flex;
+  margin-bottom: 1rem;
+  border-radius: 999px;
+  overflow: hidden;
+  background: #f2f2f2;
+}
+
+.auth-tab {
+  flex: 1;
+  padding: 0.35rem 0;
+  border: none;
+  background: transparent;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.auth-tab.is-active {
+  background: white;
+  font-weight: 600;
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.auth-label {
+  font-size: 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.auth-input {
+  padding: 0.4rem 0.6rem;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  font-size: 0.85rem;
+}
+
+.auth-error {
+  font-size: 0.8rem;
+  color: #d33;
+}
+
+/* tiny loader */
+.center-screen {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: center;
+  color: #555;
+}
+
+.loader {
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  border: 3px solid #ddd;
+  border-top-color: #3273dc;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
