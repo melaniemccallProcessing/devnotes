@@ -47,6 +47,9 @@ let selectedId = null;
 let notesLoading = false;
 let notesError = null;
 
+let lastSyncedAt = null; // Date object or null
+let isSyncing = false;
+
 // --- Utility to escape HTML ---
 function escapeHtml(str) {
   return String(str || "").replace(/[&<>"']/g, (c) => {
@@ -61,6 +64,12 @@ function escapeHtml(str) {
   });
 }
 
+// --- Utility to format time ---
+function formatTime(date) {
+  if (!date) return "Never";
+  return date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+}
+
 // --- Auth state listener ---
 onAuthStateChanged(auth, async (user) => {
   currentUser = user;
@@ -69,17 +78,20 @@ onAuthStateChanged(auth, async (user) => {
   authLoading = false;
 
   if (currentUser) {
-    // Load this user's notes from Firestore
+    // Load notes once on login
     await loadNotesForUser(currentUser.uid);
   } else {
-    // Logged out: clear notes state
+    // Clear everything on logout
     notes = [];
     selectedId = null;
     notesError = null;
     notesLoading = false;
+    lastSyncedAt = null;
+    isSyncing = false;
     render();
   }
 });
+
 
 // --- Rendering ---
 
@@ -175,12 +187,25 @@ function render() {
       <header class="app-header">
         <div class="app-title">DevNotes Desktop</div>
         <div class="app-header-right">
+          <div class="sync-info">
+            <button
+              class="btn btn-ghost btn-small"
+              id="refreshNotesBtn"
+              ${isSyncing ? "disabled" : ""}
+            >
+              ${isSyncing ? "Syncing..." : "Refresh"}
+            </button>
+            <span class="sync-label">
+              Last synced: ${formatTime(lastSyncedAt)}
+            </span>
+          </div>
           <span class="app-user-email">${escapeHtml(
-    currentUser.email || ""
-  )}</span>
+          currentUser.email || ""
+        )}</span>
           <button class="btn btn-ghost" id="logoutBtn">Logout</button>
         </div>
       </header>
+
 
       <div class="app-body">
         <aside class="sidebar">
@@ -324,6 +349,16 @@ function wireNotesEvents() {
     });
   }
 
+
+  // Refresh notes
+  const refreshBtn = document.getElementById("refreshNotesBtn");
+  if (refreshBtn) {
+    refreshBtn.addEventListener("click", async () => {
+      if (!currentUser || isSyncing) return;
+      await loadNotesForUser(currentUser.uid);
+    });
+  }
+
   // Note selection
   const notesList = document.getElementById("notesList");
   if (notesList) {
@@ -444,7 +479,9 @@ function wireNotesEvents() {
 async function loadNotesForUser(uid) {
   if (!uid) return;
   notesLoading = true;
+  isSyncing = true;
   notesError = null;
+  render();
 
   try {
     const notesRef = collection(db, "notes");
@@ -468,12 +505,19 @@ async function loadNotesForUser(uid) {
       };
     });
 
-    selectedId = notes[0]?.id ?? null;
+    if (!selectedId && notes.length) {
+      selectedId = notes[0].id;
+    } else if (selectedId && !notes.find((n) => n.id === selectedId)) {
+      selectedId = notes[0]?.id ?? null;
+    }
+
+    lastSyncedAt = new Date();
   } catch (err) {
     console.error("Error loading notes:", err);
     notesError = err.message || "Failed to load notes.";
   } finally {
     notesLoading = false;
+    isSyncing = false;
     render();
   }
 }
